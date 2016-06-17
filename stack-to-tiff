@@ -1,0 +1,122 @@
+StackToTiff();
+
+function StackToTiff()
+	{
+	var channels, stacks, channel1, channel2, channel3, channel4, colors, title, newTitle, imagedir;
+	Dialog.create("Channel Info");
+		Dialog.addMessage("Please remember that if you're doing a \nflat RGB image with four colors, the cyan will \nsplit into the green and blue channels.");
+		channels = newArray("Two","Three","Four");
+		Dialog.addChoice("Channels",channels);
+		stacks = newArray("RGB Flat", "Separate Colors");
+		Dialog.addChoice("Colors", stacks);
+		filetype = newArray("Tiff", "Jpg");
+		Dialog.addChoice("File Type", filetype);
+	Dialog.show;
+	channels = Dialog.getChoice();
+	stacks = Dialog.getChoice();
+	filetype = Dialog.getChoice();
+	if (channels == "Four"){
+		Dialog.create("Image Quant");
+			colors = newArray("None","Green", "Red", "Blue", "Cyan");
+			Dialog.setInsets(20,18,2);
+			Dialog.addChoice("Channel 1",colors);
+			Dialog.setInsets(2,18,2);
+			Dialog.addChoice("Channel 2",colors);
+			Dialog.setInsets(2,18,2);
+			Dialog.addChoice("Channel 3",colors);
+			Dialog.setInsets(2,18,5);
+		Dialog.addChoice("Channel 4",colors);
+		Dialog.show;
+		channel1 = Dialog.getChoice();
+		channel2 = Dialog.getChoice();
+		channel3 = Dialog.getChoice();
+		channel4 = Dialog.getChoice();
+	}
+	else if(channels == "Three")
+		{
+		Dialog.create("Image Quant");
+			colors = newArray("None","Green", "Red", "Blue", "Cyan");
+			Dialog.setInsets(20,18,2);
+			Dialog.addChoice("Channel 1",colors);
+			Dialog.setInsets(2,18,2);
+			Dialog.addChoice("Channel 2",colors);
+			Dialog.setInsets(2,18,2);
+			Dialog.addChoice("Channel 3",colors);
+		Dialog.show;
+		channel1 = Dialog.getChoice();
+		channel2 = Dialog.getChoice();
+		channel3 = Dialog.getChoice();
+		channel4 = "";
+		}
+	else if(channels == "Two")
+		{	
+		Dialog.create("Image Quant");
+			colors = newArray("None","Green", "Red", "Blue", "Cyan");
+			Dialog.setInsets(20,18,2);
+			Dialog.addChoice("Channel 1",colors);
+			Dialog.setInsets(2,18,2);
+			Dialog.addChoice("Channel 2",colors);
+		Dialog.show;
+		channel1 = Dialog.getChoice();
+		channel2 = Dialog.getChoice();
+		channel3 = "";
+		channel4 = "";
+		}
+	open();
+	imagedir = getDirectory("Choose folder to save images in");
+	for (i = nImages; i > 0; i--) {
+		selectImage(i);
+		title=getTitle();
+		Dialog.create("Title");
+			Dialog.addMessage("Rename");
+			Dialog.addString("", title,50);
+			Dialog.show();
+		newTitle = Dialog.getString();
+		rename(newTitle);
+		title=getTitle();
+		selectWindow(title);
+		if (channels == "Four") {
+			Stack.setChannel(1);
+			run(channel1);
+			Stack.setChannel(2);
+			run(channel2);
+			Stack.setChannel(3);
+			run(channel3);
+			Stack.setChannel(4);
+			run(channel4);
+			}
+		else if (channels == "Three")
+			{
+			Stack.setChannel(1);
+			run(channel1);
+			Stack.setChannel(2);
+			run(channel2);
+			Stack.setChannel(3);
+			run(channel3);
+			}
+		else if (channels == "Two")
+			{
+			Stack.setChannel(1);
+			run(channel1);
+			Stack.setChannel(2);
+			run(channel2);
+			}
+		rename("close_me");
+		run("Z Project...", "projection=[Max Intensity]");
+		selectWindow("close_me");
+		close();
+		if (stacks == "RGB Flat"){
+			selectWindow("MAX_close_me");
+			run("Stack to RGB");
+			saveAs(filetype, imagedir+title);
+			close();
+			selectWindow("MAX_close_me");
+			close();
+			}
+		else {
+			selectWindow("MAX_close_me");
+			saveAs(filetype, imagedir+title);
+			close();
+			}
+		}
+	}
