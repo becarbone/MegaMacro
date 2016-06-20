@@ -2,15 +2,15 @@
 var start, channels, title, newTitle, title2, imagedir, imagedir2, collect, length, numbah, moNumbah;
 var bluedir, reddir, greendir, repeat, measure1, blind, row, blind1, blind2, ROIdir, blindedlist1, blindedlist2;
 var punctadir2, punctadir1, img, controldir, blinddir1, blindlist1, blinddir2, blindlist2, imageblind1, imageblind2;
-var greenThreshold, redThreshold, areapercent, scale, minsize, maxsize, name, gcount, rcount, grcount, rgcount, axonlength, axonflag;
-var greenstring, redstring, result;
-var channel1, channel2, channel3, channel4;
+var greenThreshold, redThreshold, areapercent, scale, minsize, maxsize, name, gcount, rcount, grcount, rgcount;
+var greenstring, redstring, result, filetype, axonlength, axonflag;
+var channel1, channel2, channel3, channel4, colors;
 
 //select the parameters for image proccessing
 Dialog.create("Image Quant");
     items = newArray("Three channel neuron culture", "Four channel co-culture", "Four channel neuron culture");
     Dialog.addRadioButtonGroup("Culture Type", items, 3, 1, "Three channel neuron culture");
-    items = newArray("Start", "Start ", "Dendrites","ROI Selection", "Thresholding", "Puncta", "Quantification");
+    items = newArray("Start", "Start", "Dendrites","ROI Selection", "Thresholding", "Puncta", "Quantification");
     Dialog.addRadioButtonGroup("Start at?", items, 4, 2, "Start");
 Dialog.show;
 //translate parameters to variables
@@ -60,12 +60,13 @@ waitForUser("Are these correct? "+start+" and "+culture);
 if (culture == "Three channel neuron culture") 
 	{
 	//code for normal neuron culture analysis starts here
+	channels = "Three";
 	imagedir = getDirectory("Choose folder to save images in");
 	rawdir = getDirectory("Choose folder to save the raw data in");
 	while (start == "Start")
 		{
 		open();
-		StackToTiffThreeFlat();
+		StackToTiff();
 		start = "Dendrites";
 		}
 	while (start == "Dendrites")
@@ -152,10 +153,12 @@ if (culture == "Three channel neuron culture")
 		culture = "reset";
 		print(8);
 		}
+	waitForUser("Done!");
 	}
 //code for co-culture analysis starts here
 if (culture == "Four channel co-culture")
 	{
+	channels = "Four";
 	imagedir=getDirectory("Choose folder for flattened images");
 	bluedir = getDirectory("Choose folder for unblinded blue/cerulean channels of the ROI");
 	greendir = getDirectory("Choose folder for unblinded green channel of the ROI");
@@ -163,7 +166,7 @@ if (culture == "Four channel co-culture")
 	while (start == "Start")
 		{
 		open();
-		StackToTiffFourStack();
+		StackToTiff();
 		start = "ROI Selection";
 		}
 	blinddir1 = greendir;
@@ -220,6 +223,7 @@ if (culture == "Four channel co-culture")
 		start = "reset";
 		}
 	culture = "reset";
+	waitForUser("Done!");
 	}
 if (culture == "Four channel neuron culture") 
 	{
@@ -229,43 +233,17 @@ if (culture == "Four channel neuron culture")
 //these are the functions referenced in the script
 //each should be pretty self explanatory in the names
 
-function StackToTiffThreeFlat()
+function StackToTiff()
 	{
-	for (i = nImages; i > 0; i--) 
-		{
-		selectImage(i);
-		title=getTitle();
-		Dialog.create("Title");
-			Dialog.addMessage("Rename");
-			Dialog.addString("", title,50);
-			Dialog.show();
-		newTitle = Dialog.getString();
-		rename(newTitle);
-		title=getTitle();
-		selectWindow(title);
-		Stack.setChannel(1);
-		run(channel1);
-		Stack.setChannel(2);
-		run(channel2);
-		Stack.setChannel(3);
-		run(channel3);
-		rename("close_me");
-		run("Z Project...", "projection=[Max Intensity]");
-		selectWindow("close_me");
-		close();
-		selectWindow("MAX_close_me");
-		run("Stack to RGB");
-		saveAs("Tiff", imagedir+title);
-		close();
-		selectWindow("MAX_close_me");
-		close();
-		}
-	}
-	
-function StackToTiffFourFlat()
-	{
-	imagedir=getDirectory("Choose folder to save images in");
-	imagedir2=getDirectory("Choose folder to save tif images in");
+	Dialog.create("Channel Info");
+		Dialog.addMessage("Please remember that if you're doing a \nflat RGB image with four colors, the cyan will \nsplit into the green and blue channels.");
+		stacks = newArray("RGB Flat", "Separate Colors");
+		Dialog.addChoice("Colors", stacks);
+		filetype = newArray("Tiff", "Jpg");
+		Dialog.addChoice("File Type", filetype);
+	Dialog.show;
+	stacks = Dialog.getChoice();
+	filetype = Dialog.getChoice();
 	for (i = nImages; i > 0; i--) {
 		selectImage(i);
 		title=getTitle();
@@ -277,109 +255,96 @@ function StackToTiffFourFlat()
 		rename(newTitle);
 		title=getTitle();
 		selectWindow(title);
+		if (channels == "Four") {
+			Stack.setChannel(1);
+			run(channel1);
+			Stack.setChannel(2);
+			run(channel2);
+			Stack.setChannel(3);
+			run(channel3);
+			Stack.setChannel(4);
+			run(channel4);
+			}
+		else if (channels == "Three")
+			{
+			Stack.setChannel(1);
+			run(channel1);
+			Stack.setChannel(2);
+			run(channel2);
+			Stack.setChannel(3);
+			run(channel3);
+			}
 		rename("close_me");
 		run("Z Project...", "projection=[Max Intensity]");
-		saveAs("Tiff", imagedir2+title+"_stack");
-		title2=getTitle();
-		selectWindow(title2);
-		rename("MAX_close_me");
-		//gotta be careful here - it removes the fourth channel to allow it to be RGBified.
-		Stack.setChannel(4);
-		run("Delete Slice");
-		run("Stack to RGB");
-		run("Properties...", "channels=1 slices=1 frames=1 unit=micron pixel_width=0.1705109 pixel_height=0.1705109 voxel_depth=1");
-		saveAs("Tiff", imagedir+title);
-		close();
 		selectWindow("close_me");
 		close();
-		selectWindow("MAX_close_me");
-		close();
+		if (stacks == "RGB Flat"){
+			selectWindow("MAX_close_me");
+			run("Stack to RGB");
+			saveAs(filetype, imagedir+title);
+			close();
+			selectWindow("MAX_close_me");
+			close();
+			}
+		else {
+			selectWindow("MAX_close_me");
+			saveAs(filetype, imagedir+title);
+			close();
+			}
 		}
 	}
-
-function StackToTiffFourStack()
+function DendriteSelect()
 	{
-	for (i = nImages; i > 0; i--) 
-		{
-		selectImage(i);
+	Dialog.create("Are there Usable dendrites?");
+		Dialog.addString("","yes or no",30);
+		Dialog.show();
+	collect = Dialog.getString();	
+	while (collect == "yes") {
+		run("In [+]");
+		run("In [+]");
+		run("In [+]");
+		//modify the name
 		title=getTitle();
 		Dialog.create("Title");
 			Dialog.addMessage("Rename");
-			Dialog.addString("", title,50);
-			Dialog.show();
+			Dialog.addString("",title,50);
+		Dialog.show();
 		newTitle = Dialog.getString();
 		rename(newTitle);
 		title=getTitle();
 		selectWindow(title);
-		rename("close_me");
-		run("Z Project...", "projection=[Max Intensity]");
-		Stack.setChannel(1);
-		run(channel1);
-		Stack.setChannel(2);
-		run(channel2);
-		Stack.setChannel(3);
-		run(channel3);
-		Stack.setChannel(4);
-		run(channel4);
-		saveAs("Tiff", imagedir+title);
+		//select dendrite
+		setTool("polygon");
+		waitForUser ("Select dendrite then hit OK");
+		run("Copy");
+		run("Internal Clipboard");
+		setTool("polyline");
+		waitForUser ("Measure dendrite length");
+		run("Clear Results");
+		run("Measure");
+		length = getResult("Length",0);
+		print(title+ "-1,"+length);	
+		setTool("polygon");
+		waitForUser ("Select dendrite then hit OK");
+		run("Copy");
+		run("Internal Clipboard");
+		setTool("polyline");
+		waitForUser ("Measure dendrite length");
+		run("Clear Results");
+		run("Measure");
+		length = getResult("Length",0);
+		print(title+ "-2,"+length);	
+		selectWindow("Clipboard-1");
+		saveAs("Tiff", rawdir+title+"-2");
 		close();
-		selectWindow("close_me");
+		selectWindow("Clipboard");
+		saveAs("Tiff", rawdir+title+"-1");
 		close();
+		selectWindow(title);
+		close();
+		collect = "reset";
 		}
-	}	
-
-function DendriteSelect()
-	{
-		Dialog.create("Are there Usable dendrites?");
-			Dialog.addString("","yes or no",30);
-			Dialog.show();
-		collect = Dialog.getString();	
-		while (collect == "yes") {
-			run("In [+]");
-			run("In [+]");
-			run("In [+]");
-			//modify the name
-			title=getTitle();
-			Dialog.create("Title");
-				Dialog.addMessage("Rename");
-				Dialog.addString("",title,50);
-				Dialog.show();
-			newTitle = Dialog.getString();
-			rename(newTitle);
-			title=getTitle();
-			selectWindow(title);
-			//select dendrite
-			setTool("polygon");
-			waitForUser ("Select dendrite then hit OK");
-			run("Copy");
-			run("Internal Clipboard");
-			setTool("polyline");
-			waitForUser ("Measure dendrite length");
-			run("Clear Results");
-			run("Measure");
-			length = getResult("Length",0);
-			print(title+ "-1,"+length);	
-			setTool("polygon");
-			waitForUser ("Select dendrite then hit OK");
-			run("Copy");
-			run("Internal Clipboard");
-			setTool("polyline");
-			waitForUser ("Measure dendrite length");
-			run("Clear Results");
-			run("Measure");
-			length = getResult("Length",0);
-			print(title+ "-2,"+length);	
-			selectWindow("Clipboard-1");
-			saveAs("Tiff", rawdir+title+"-2");
-			close();
-			selectWindow("Clipboard");
-			saveAs("Tiff", rawdir+title+"-1");
-			close();
-			selectWindow(title);
-			close();
-			collect = "reset";
-			}
-		close();
+	close();
 	}
 
 function ROIselect()
