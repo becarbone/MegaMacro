@@ -3,7 +3,7 @@ var start, channels, title, newTitle, title2, imagedir, imagedir2, collect, leng
 var bluedir, reddir, greendir, repeat, measure1, blind, row, blind1, blind2, ROIdir, blindedlist1, blindedlist2;
 var punctadir2, punctadir1, img, controldir, blinddir1, blindlist1, blinddir2, blindlist2, imageblind1, imageblind2;
 var greenThreshold, redThreshold, areapercent, scale, minsize, maxsize, name, gcount, rcount, grcount, rgcount;
-var greenstring, redstring, result, filetype, axonlength, axonflag;
+var greenstring, redstring, result, filetype, axonlength, axonflag, resultlist, FolderCreate, foldername;
 var channel1, channel2, channel3, channel4, colors;
 
 //select the parameters for image proccessing
@@ -107,51 +107,59 @@ if (culture == "Three channel neuron culture")
 		
 		//input the thresholds, %area, scale, and dimensions
 		parameterinput();
+
 		print("Raw_Folder:	"+rawdir);
 		print("Result_Folder:	"+resultdir);
 		print("GreenThreshold	RedThreshold	AreaPercent(%)	PixelScale(um/pixel)	Min_Puncta_Size	Max_Puncta_Size");
 		print(greenThreshold+"	"+redThreshold+"	"+areapercent+"	"+scale+"	"+minsize+"	"+maxsize);
-		print(" 	GreenPuncta#	RedPuncta#	GR#	RG#	AxonLength(um)	Density_R(um/#)	Density_G(um/#)");
-		
-		folderlist=getFileList(rawdir);
-		for(d=0;d<folderlist.length;d++)
- 			{
-  			//create corresponding subfolder in result folder
-  			exec("cmd", "/c", "mkdir", resultdir+folderlist[d]);
-  			//create greenarea and redarea subfolder
-  			//exec("cmd", "/c", "mkdir", resultdir+folderlist[d]+"greenarea/");
-  			//exec("cmd", "/c", "mkdir", resultdir+folderlist[d]+"redarea/");
- 	 
-  			filelist=getFileList(rawdir+folderlist[d]);
- 			print(folderlist[d]);
-  			greenstring="Filename	#	Area	Perim	%Area\n";
-  			redstring="Filename	#	Area	Perim	%Area\n";
- 	 
-  			for(f=0;f<filelist.length;f++)
-  		 		{
-   				// initialize :  open file, split channel, name by "red"/"green"/"axon"
-   				initialize();
-   		 		// create green red mask images and roi files
-   				mask("green"); 
-   		 		mask("red");
-   				// mask axon, and get length;
-   				axon();
-  	  			//measure
-    			measure();	
-				}	
+		print(" 	GreenPuncta#	RedPuncta#	GR#	RG#	AxonLength(um)	Density_G(#/um)	Density_R(#/um)");
+			
+	  	greenstring="Filename	#	Area	Perim	%Area\n";
+		redstring="Filename	#	Area	Perim	%Area\n";	
 
-			tmpname=substring(folderlist[d], 0, lengthOf(folderlist[d])-1);
-			File.saveString(greenstring, resultdir+folderlist[d]+tmpname+"_GreenArea.xls"); 
-			File.saveString(redstring, resultdir+folderlist[d]+tmpname+"_RedArea.xls");  	
+		folderlist=getFileList(rawdir);
+
+		Dialog.create("Conditions");
+			Dialog.addMessage("How many conditions do you have?");
+			conditions = newArray(1,2,3,4,5);
+			Dialog.setInsets(2,40,2);
+			Dialog.addChoice("",conditions);
+		Dialog.show();
+		FolderCreate = Dialog.getChoice();
+	
+		for(f=0;f<FolderCreate;f++) 
+			{
+			foldername = File.getName(rawdir+folderlist[f]);
+			File.makeDirectory(resultdir+foldername);
+			folderpath = getDirectory("Choose folder for condition " + (f+1)); 
+			rawlist=getFileList(rawdir+foldername);
+			filelist=getFileList(rawdir+folderlist[f]);
+			print(folderlist[f]);
+			for(d=0;d<filelist.length;d++)
+				{
+				// initialize :  open file, split channel, name by "red"/"green"/"axon"
+				initialize();
+				// create green red mask images and roi files
+				mask("green"); 
+				mask("red");
+				// mask axon, and get length;
+				axon();
+				//measure
+				measure();
+				temptitle = File.getName(folderpath);
+				}
+			File.saveString(greenstring, folderpath+temptitle+"_GreenArea.xls");
+			File.saveString(redstring, folderpath+temptitle+"_RedArea.xls");  
 			}
-		print(7);
-		selectWindow("Log");
-		saveAs("Text", resultdir+"Summary.xls");
-		selectWindow("Log"); run("Close");
-		selectWindow("Results"); run("Close");
-		selectWindow("ROI Manager"); run("Close");
-		culture = "reset";
-		print(8);
+			selectWindow("Log");
+			saveAs("Text", resultdir+"Summary.xls");
+			selectWindow("Log"); 
+			run("Close");
+			selectWindow("Results"); 
+			run("Close");
+			selectWindow("ROI Manager"); 
+			run("Close");
+			start = "reset";
 		}
 	waitForUser("Done!");
 	}
@@ -583,138 +591,6 @@ function SplitChannel()
 
 
 
-function measure()
-	{
-	if( gcount > 0 ) 
-		{
-		roiManager("Open", resultdir+folderlist[d]+name+"_green_ROI.zip");
-		selectImage("red mask");
-		run("Clear Results");
-		roiManager("Measure");
-		grcount=0;
-		}
-	for(i=0;i<roiManager("Count");i++)
-		{
-		if( getResult("%Area",i) >= areapercent ) grcount++;
-		roiManager("reset"); run("Clear Results");
-		}
-	if( rcount > 0 ) 
-		{
-		roiManager("Open", resultdir+folderlist[d]+name+"_red_ROI.zip");
-		selectImage("green mask");
-		run("Clear Results");
-		roiManager("Measure");
-		rgcount=0;
-		}
-	for(i=0;i<roiManager("Count");i++)
-		{
-		if( getResult("%Area",i) >= areapercent ) 
-			{
-			rgcount++;
-			roiManager("reset"); run("Clear Results");
-			//print(" 	GreenPuncta#	RedPuncta#	GR#	RG#	AxonLength(um)	Density_R(um/#)	Density_G(um/#)");
-			print(filelist[f]+"	"+gcount+"	"+rcount+"	"+grcount+"	"+rgcount+"	"+axonlength+"	"+((rcount/axonlength)*10)+"	"+((gcount/axonlength)*10));
-			}
-		}
-	run("Close All"); 
-	}
-
-function mask(channel)
-	{
-	selectImage(channel);
-	run("Gaussian Blur...", "sigma=1");
-	if( channel == "green")
-		{
-		setThreshold(greenThreshold, 255);
-		}
-	if( channel == "red")
-		{
-		setThreshold(redThreshold, 255);  
-		}
-      
-	run("Find Maxima...", "noise=10 output=[Segmented Particles] above");
-	run("Analyze Particles...", "size="+minsize+"-"+maxsize+" pixel show=Masks add");
-	selectWindow("Mask of "+channel+" Segmented");  
-	run("Grays");
-	saveAs("Tiff", resultdir+folderlist[d]+name+"_"+channel+"_mask.tif");
-	run("Clear Results");
-	roiManager("Measure");
-	selectWindow("Results");
-  
-	if( channel == "green")
-		{
-		for(j=0;j<nResults;j++)
-		greenstring=greenstring+filelist[f]+"	"+j+1+"	"+getResult("Area",j)+"	"+getResult("Perim.",j)+" 	"+getResult("%Area",j)+"\n";
-		}
-    
-	if( channel == "red")
-		{
-    	for(j=0;j<nResults;j++)
-      	redstring=redstring+filelist[f]+"	"+j+1+"	"+getResult("Area",j)+"	"+getResult("Perim.",j)+"	"+getResult("%Area",j)+"\n";;
-		}
-	run("Clear Results");
-	rename(channel+" mask");
-	selectImage(channel); close();
-	selectImage(channel+" Segmented"); close();
-
-	if( channel == "green" )  
-		{
-		gcount = roiManager("Count");
-		}
-	if( channel == "red" )  
-		{
-		rcount = roiManager("Count");
-		}
-  	if( roiManager("Count") > 0 )
-  		{
-		roiManager("Save", resultdir+folderlist[d]+name+"_"+channel+"_ROI.zip");
-		roiManager("reset");
- 		}
-}
-function axon()
-	{
-	selectImage("axon");
-	run("Subtract Background...", "rolling=10");
-	run("Gaussian Blur...", "sigma=3");
-	setAutoThreshold("Triangle dark");
-	setOption("BlackBackground", true);
-	run("Convert to Mask");
-	run("Skeletonize");
-	run("Analyze Particles...", "size=25-infinity pixel show=Nothing add");
-	axonlength=0;
-	if( roiManager("Count") > 0 )
-		{
-		roiManager("Save", resultdir+folderlist[d]+name+"_axon.zip");
-		run("Clear Results");
-		roiManager("Measure");
-		for(i=0; i< roiManager("Count"); i++)
-			{
-			axonlength= axonlength + getResult("Perim.",0) ;
-			axonlength = axonlength/2;
-			open(rawdir+folderlist[d]+filelist[f]);
-			roiManager("Show All");
-			run("Flatten");
-			tmp= substring(folderlist[d], 0 , lengthOf(folderlist[d])-1 );
-			saveAs("Jpeg", axondir+tmp+"_"+name+"_show.jpg");
-			close(); close();
-			}
-
-		roiManager("reset"); 
-		run("Clear Results");
-		}
-
-function initialize()
-	{
-	open(rawdir+folderlist[d]+filelist[f]);
-	name=getInfo("image.filename");
-	run("Properties...", "channels=1 slices=1 frames=1 unit=um pixel_width="+scale+" pixel_height=0.1705 voxel_depth=1");
-	run("Split Channels");
-	rename("axon");
-	selectImage(name+" (green)"); rename("green");
-	selectImage(name+" (red)"); rename("red");
-	}
- 	
-
 function parameterinput()
 	{
 	Dialog.create("Parameter");
@@ -732,3 +608,134 @@ function parameterinput()
 	minsize = Dialog.getNumber();  
 	maxsize = Dialog.getNumber();  
 	}
+
+function initialize()
+ {
+	open(rawdir+foldername+File.separator+rawlist[d]);
+	name=getInfo("image.filename");
+	run("Properties...", "channels=1 slices=1 frames=1 unit=um pixel_width="+scale+" pixel_height=0.1705 voxel_depth=1");
+	run("Split Channels");
+	rename("axon");
+	selectImage(name+" (green)"); rename("green");
+	selectImage(name+" (red)"); rename("red");
+ }
+
+function mask(channel)
+	{
+	selectImage(channel);
+	run("Gaussian Blur...", "sigma=1");
+	if( channel == "green") {
+		setThreshold(greenThreshold, 255);
+		}
+	if( channel == "red") {
+		setThreshold(redThreshold, 255);
+		}
+	run("Find Maxima...", "noise=10 output=[Segmented Particles] above");
+	run("Analyze Particles...", "size="+minsize+"-"+maxsize+" pixel show=Masks add");
+	selectWindow("Mask of "+channel+" Segmented");  
+	run("Grays");
+	saveAs("Tiff", folderpath+name+"_"+channel+"_mask.tif");
+	run("Clear Results");
+	roiManager("Measure");
+	selectWindow("Results");
+  
+	if( channel == "green")
+		{
+		for(j=0;j<nResults;j++) {
+			greenstring = greenstring+filelist[d]+"	"+j+1+"	"+getResult("Area",j)+"	"+getResult("Perim.",j)+" 	"+getResult("%Area",j)+"\n";
+			}
+		}
+	if( channel == "red")
+		{
+		for(j=0;j<nResults;j++) {
+			redstring = redstring+filelist[d]+"	"+j+1+"	"+getResult("Area",j)+"	"+getResult("Perim.",j)+" 	"+getResult("%Area",j)+"\n";
+			}
+		}
+  
+	run("Clear Results");
+	rename(channel+" mask");
+	selectImage(channel); close();
+	selectImage(channel+" Segmented"); close();
+
+	if( channel == "green" )  {
+		gcount = roiManager("Count");
+		}
+	if( channel == "red" )  {
+		rcount = roiManager("Count");
+		}
+  
+	if( roiManager("Count") > 0 )
+		{
+		roiManager("Save",folderpath+name+"_"+channel+"_ROI.zip");
+		}
+	roiManager("reset");
+	}
+
+function axon()
+	{
+	selectImage("axon");
+	run("Subtract Background...", "rolling=10");
+	run("Gaussian Blur...", "sigma=3");
+	setAutoThreshold("Triangle dark");
+	setOption("BlackBackground", true);
+	run("Convert to Mask");
+	run("Skeletonize");
+	run("Analyze Particles...", "size=25-infinity pixel show=Nothing add");
+  
+	axonlength=0;
+	if( roiManager("Count") > 0 )
+		{
+		roiManager("Save", folderpath+name+"_axon.zip");
+		run("Clear Results");
+		roiManager("Measure");
+
+		for(i=0; i< roiManager("Count"); i++)
+		axonlength= axonlength + getResult("Perim.",0) ;
+		axonlength = axonlength/2;
+
+		open(rawdir+foldername+File.separator+rawlist[d]);
+		roiManager("Show All");
+		run("Flatten");
+    	saveAs("Jpeg", axondir+foldername+"_"+name+"_show.jpg");
+		close(); close();
+		}
+	roiManager("reset"); 
+	run("Clear Results");
+	}
+
+function measure()
+	{
+	if( gcount > 0 ) {
+  		roiManager("Open", folderpath+name+"_green_ROI.zip");
+		}
+	run("Clear Results");
+	roiManager("Measure");
+	grcount=0;
+	for(i=0;i<roiManager("Count");i++) {
+		if( getResult("%Area",i) >= areapercent ) {
+			grcount++;
+			}
+		}
+	roiManager("reset"); 
+	run("Clear Results");
+	
+	if( rcount > 0 ) {
+  		roiManager("Open", folderpath+name+"_green_ROI.zip");
+		}
+	run("Clear Results");
+	roiManager("Measure");
+	rgcount=0;
+	for(i=0;i<roiManager("Count");i++) {
+		if( getResult("%Area",i) >= areapercent ) {
+			rgcount++;
+			}
+		}
+	roiManager("reset"); 
+	run("Clear Results");
+	
+	//print(" 	GreenPuncta#	RedPuncta#	GR#	RG#	AxonLength(um)	Density_G(um/#)	Density_R(um/#)");
+	print(filelist[f]+"	"+gcount+"	"+rcount+"	"+grcount+"	"+rgcount+"	"+axonlength+"	"+(gcount/axonlength)+"	"+(rcount/axonlength));
+ 
+	run("Close All"); 
+	}
+
