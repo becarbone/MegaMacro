@@ -199,6 +199,10 @@ if (culture == "Four channel co-culture")
 	blinddir2 = reddir;
 	imageblind2=getDirectory("select folder to save a blinded red copy in");
 	ROIlist = getFileList(imagedir);
+	blindlist1 = getFileList(blinddir1);
+	blindedlist1 = getFileList(imageblind1);
+	blindlist2 = getFileList(blinddir2);
+	blindedlist2 = getFileList(imageblind2);
 	while (start == "ROI Selection")
 		{
 		print("ROI,Area");
@@ -207,8 +211,6 @@ if (culture == "Four channel co-culture")
 			open(imagedir+ROIlist[i]);
 			ROIselect();
 			}
-		blindlist1 = getFileList(blinddir1);
-		blindedlist1 = getFileList(imageblind1);
 		print("Name,Blind");
 		for(i=0;i<blindlist1.length;i++)
 			{
@@ -216,8 +218,6 @@ if (culture == "Four channel co-culture")
 			blinding1();
 			}
 		waitForUser("Bring blind data over to an excel sheet - do not lose!");	
-		blindlist2 = getFileList(blinddir2);
-		blindedlist2 = getFileList(imageblind2);
 		print("Name,Blind");
 		for(i=0;i<blindlist2.length;i++)
 			{
@@ -724,6 +724,7 @@ function measure()
 	if( gcount > 0 ) {
   		roiManager("Open", folderpath+name+"_green_ROI.zip");
 		}
+	selectImage("red mask");
 	run("Clear Results");
 	roiManager("Measure");
 	grcount=0;
@@ -736,8 +737,9 @@ function measure()
 	run("Clear Results");
 	
 	if( rcount > 0 ) {
-  		roiManager("Open", folderpath+name+"_green_ROI.zip");
+  		roiManager("Open", folderpath+name+"_red_ROI.zip");
 		}
+	selectImage("green mask");
 	run("Clear Results");
 	roiManager("Measure");
 	rgcount=0;
