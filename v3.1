@@ -20,7 +20,7 @@ var bluedir, reddir, greendir, repeat, measure1, blind, row, blind1, blind2, ROI
 var punctadir2, punctadir1, img, controldir, blinddir1, blindlist1, blinddir2, blindlist2, imageblind1, imageblind2;
 var greenThreshold, redThreshold, areapercent, scale, minsize, maxsize, name, gcount, rcount, grcount, rgcount;
 var greenstring, redstring, result, filetype, axonlength, axonflag, resultlist, FolderCreate, foldername;
-var channel1, channel2, channel3, channel4, colors;
+var channel1, channel2, channel3, channel4, colors, rawdir;
 
 //select the parameters for image proccessing
 Dialog.create("Image Quant");
@@ -77,10 +77,10 @@ if (culture == "Three channel neuron culture")
 	{
 	//code for normal neuron culture analysis starts here
 	channels = "Three";
-	imagedir = getDirectory("Choose folder to save images in");
-	rawdir = getDirectory("Choose folder to save the raw data in");
 	while (start == "Start")
 		{
+		imagedir = getDirectory("Choose folder to save images in");
+		rawdir = getDirectory("Choose folder to save the raw data in");
 		open();
 		StackToTiff();
 		start = "Dendrites";
@@ -98,10 +98,11 @@ if (culture == "Three channel neuron culture")
 			}
 		start = "Thresholding";
 		}
-	controldir = getDirectory("Folder with controls for thresholding");
-	controlList = getFileList(controldir);
+
 	while (start == "Thresholding")
 		{
+		controldir = getDirectory("Folder with controls for thresholding");
+		controlList = getFileList(controldir);
 		for(i=0;i<controlList.length;i++)
 			{
 			img = controlList[i];
@@ -118,8 +119,12 @@ if (culture == "Three channel neuron culture")
 		run("Set Measurements...", "area perimeter area_fraction limit redirect=None decimal=3");
 	
 		//references rawdir, which is defined earlier and automated
+		if(rawdir == 0) 
+			{
+			rawdir = getDirectory("Choose Raw Data Folder");
+			}
 		resultdir=getDirectory("Choose Result Folder");
-		axondir=getDirectory("Choose AxonShow Folder");	
+		axondir=getDirectory("Choose Dendrite Show Folder");	
 		
 		//input the thresholds, %area, scale, and dimensions
 		parameterinput();
